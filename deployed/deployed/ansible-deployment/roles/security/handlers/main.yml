@@ -1,0 +1,36 @@
+---
+# Security role handlers
+
+- name: restart ssh
+  systemd:
+    name: "{{ ssh_service_name[ansible_os_family] }}"
+    state: restarted
+  become: yes
+
+- name: reload ssh
+  systemd:
+    name: "{{ ssh_service_name[ansible_os_family] }}"
+    state: reloaded
+  become: yes
+
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+  become: yes
+
+- name: reload fail2ban
+  systemd:
+    name: fail2ban
+    state: reloaded
+  become: yes
+
+- name: restart ufw
+  systemd:
+    name: ufw
+    state: restarted
+  become: yes
+
+- name: reload ufw
+  command: ufw --force reload
+  become: yes

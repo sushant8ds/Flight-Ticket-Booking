@@ -1,0 +1,19 @@
+---
+# Common role handlers
+
+- name: restart systemd-timesyncd
+  systemd:
+    name: systemd-timesyncd
+    state: restarted
+  become: yes
+
+- name: restart systemd-journald
+  systemd:
+    name: systemd-journald
+    state: restarted
+  become: yes
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: yes

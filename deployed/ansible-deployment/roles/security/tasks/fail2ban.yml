@@ -1,0 +1,47 @@
+---
+# Fail2ban configuration tasks
+
+- name: Install fail2ban
+  package:
+    name: fail2ban
+    state: present
+  become: yes
+  tags:
+    - fail2ban
+    - packages
+
+- name: Create fail2ban local configuration directory
+  file:
+    path: /etc/fail2ban/jail.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  tags:
+    - fail2ban
+    - configuration
+
+- name: Configure fail2ban jail for SSH
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.d/ssh.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  become: yes
+  notify: restart fail2ban
+  tags:
+    - fail2ban
+    - configuration
+
+- name: Start and enable fail2ban service
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+  become: yes
+  tags:
+    - fail2ban
+    - service

@@ -1,0 +1,224 @@
+---
+# SSH security configuration tasks
+
+- name: Backup original SSH configuration
+  copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.backup
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+  tags:
+    - ssh
+    - backup
+
+- name: Configure SSH daemon - Port
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Port'
+    line: 'Port {{ ssh_port }}'
+    backup: yes
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - Protocol
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Protocol'
+    line: 'Protocol {{ ssh_protocol }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - PermitRootLogin
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin {{ ssh_permit_root_login }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - PasswordAuthentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication {{ ssh_password_authentication }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - PubkeyAuthentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: 'PubkeyAuthentication {{ ssh_pubkey_authentication }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - ChallengeResponseAuthentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?ChallengeResponseAuthentication'
+    line: 'ChallengeResponseAuthentication {{ ssh_challenge_response_authentication }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - GSSAPIAuthentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?GSSAPIAuthentication'
+    line: 'GSSAPIAuthentication {{ ssh_gss_api_authentication }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - X11Forwarding
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?X11Forwarding'
+    line: 'X11Forwarding {{ ssh_x11_forwarding }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - MaxAuthTries
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?MaxAuthTries'
+    line: 'MaxAuthTries {{ ssh_max_auth_tries }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - ClientAliveInterval
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?ClientAliveInterval'
+    line: 'ClientAliveInterval {{ ssh_client_alive_interval }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - ClientAliveCountMax
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?ClientAliveCountMax'
+    line: 'ClientAliveCountMax {{ ssh_client_alive_count_max }}'
+  become: yes
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH daemon - Additional security settings
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?{{ item.key }}'
+    line: '{{ item.key }} {{ item.value }}'
+  become: yes
+  loop:
+    - { key: 'PermitEmptyPasswords', value: 'no' }
+    - { key: 'PermitUserEnvironment', value: 'no' }
+    - { key: 'Compression', value: 'delayed' }
+    - { key: 'TCPKeepAlive', value: 'yes' }
+    - { key: 'AllowAgentForwarding', value: 'no' }
+    - { key: 'AllowTcpForwarding', value: 'no' }
+    - { key: 'MaxStartups', value: '10:30:100' }
+    - { key: 'LoginGraceTime', value: '30' }
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH allowed users (if specified)
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?AllowUsers'
+    line: 'AllowUsers {{ ssh_allowed_users | join(" ") }}'
+  become: yes
+  when: ssh_allowed_users is defined
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Configure SSH allowed groups (if specified)
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?AllowGroups'
+    line: 'AllowGroups {{ ssh_allowed_groups | join(" ") }}'
+  become: yes
+  when: ssh_allowed_groups is defined
+  notify: restart ssh
+  tags:
+    - ssh
+    - configuration
+
+- name: Validate SSH configuration
+  command: sshd -t
+  become: yes
+  changed_when: false
+  tags:
+    - ssh
+    - validation
+
+- name: Ensure SSH service is enabled and started
+  systemd:
+    name: "{{ ssh_service_name[ansible_os_family] }}"
+    enabled: yes
+    state: started
+  become: yes
+  tags:
+    - ssh
+    - service
+
+- name: Generate SSH host keys if missing
+  command: ssh-keygen -A
+  become: yes
+  args:
+    creates: /etc/ssh/ssh_host_rsa_key
+  tags:
+    - ssh
+    - keys
+
+- name: Set proper permissions on SSH host keys
+  file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+  loop:
+    - /etc/ssh/ssh_host_rsa_key
+    - /etc/ssh/ssh_host_ecdsa_key
+    - /etc/ssh/ssh_host_ed25519_key
+  ignore_errors: yes
+  tags:
+    - ssh
+    - permissions

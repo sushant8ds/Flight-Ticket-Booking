@@ -1,0 +1,17 @@
+#!/bin/bash
+# Virtual environment activation script for {{ app_name }}
+
+# Activate virtual environment
+source {{ venv_path }}/bin/activate
+
+# Set environment variables
+{% for key, value in python_environment.items() %}
+export {{ key }}="{{ value }}"
+{% endfor %}
+
+# Change to application directory
+cd {{ app_dir }}
+
+echo "Virtual environment activated for {{ app_name }}"
+echo "Python version: $(python --version)"
+echo "Current directory: $(pwd)"

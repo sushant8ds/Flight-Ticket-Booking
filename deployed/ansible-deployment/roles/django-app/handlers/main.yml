@@ -1,0 +1,31 @@
+---
+# Django application role handlers
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: restart django app
+  systemd:
+    name: "{{ service_name }}"
+    state: restarted
+  become: yes
+
+- name: reload django app
+  systemd:
+    name: "{{ service_name }}"
+    state: reloaded
+  become: yes
+
+- name: stop django app
+  systemd:
+    name: "{{ service_name }}"
+    state: stopped
+  become: yes
+
+- name: start django app
+  systemd:
+    name: "{{ service_name }}"
+    state: started
+  become: yes

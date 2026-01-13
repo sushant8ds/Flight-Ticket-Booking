@@ -1,0 +1,148 @@
+---
+# User account management tasks
+
+- name: Create application group
+  group:
+    name: "{{ app_group }}"
+    state: present
+    system: yes
+  become: yes
+  tags:
+    - users
+    - system
+
+- name: Create additional groups if specified
+  group:
+    name: "{{ item }}"
+    state: present
+  become: yes
+  loop: "{{ additional_groups | default([]) }}"
+  tags:
+    - users
+    - system
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    groups: "{{ app_user_groups | join(',') }}"
+    shell: "{{ app_user_shell }}"
+    home: "{{ app_user_home }}"
+    create_home: yes
+    system: yes
+    state: present
+    password: "!"  # Disable password login
+  become: yes
+  when: create_app_user | bool
+  tags:
+    - users
+    - system
+
+- name: Set application user home directory permissions
+  file:
+    path: "{{ app_user_home }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+    state: directory
+  become: yes
+  when: create_app_user | bool
+  tags:
+    - users
+    - permissions
+
+- name: Create .ssh directory for application user
+  file:
+    path: "{{ app_user_home }}/.ssh"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0700'
+    state: directory
+  become: yes
+  when: create_app_user | bool
+  tags:
+    - users
+    - ssh
+
+- name: Set up authorized_keys for application user
+  authorized_key:
+    user: "{{ app_user }}"
+    key: "{{ item }}"
+    state: present
+  become: yes
+  loop: "{{ app_user_ssh_keys | default([]) }}"
+  when: 
+    - create_app_user | bool
+    - app_user_ssh_keys is defined
+  tags:
+    - users
+    - ssh
+
+- name: Configure sudo access for application user
+  lineinfile:
+    path: /etc/sudoers.d/{{ app_user }}
+    line: "{{ app_user }} ALL=(ALL) NOPASSWD: /bin/systemctl restart {{ app_name }}, /bin/systemctl start {{ app_name }}, /bin/systemctl stop {{ app_name }}, /bin/systemctl status {{ app_name }}"
+    create: yes
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  become: yes
+  when: 
+    - create_app_user | bool
+    - allow_service_management | default(true)
+  tags:
+    - users
+    - sudo
+
+- name: Create application directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+    state: directory
+  become: yes
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/logs"
+    - "{{ app_dir }}/tmp"
+    - "{{ backup_dir }}"
+  when: create_app_user | bool
+  tags:
+    - users
+    - directories
+
+- name: Set system limits for application user
+  pam_limits:
+    domain: "{{ app_user }}"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  become: yes
+  loop: "{{ system_limits }}"
+  when: 
+    - create_app_user | bool
+    - system_limits is defined
+  tags:
+    - users
+    - limits
+
+- name: Verify user creation
+  user:
+    name: "{{ app_user }}"
+    state: present
+  become: yes
+  register: user_check
+  when: create_app_user | bool
+  tags:
+    - users
+    - verification
+
+- name: Display user information
+  debug:
+    msg: "Application user {{ app_user }} created with UID {{ user_check.uid }} and GID {{ user_check.group }}"
+  when: 
+    - create_app_user | bool
+    - user_check is defined
+  tags:
+    - users
+    - verification

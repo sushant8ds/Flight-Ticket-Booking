@@ -1,0 +1,97 @@
+---
+# Virtual environment setup tasks
+
+- name: Create application directory
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - python
+    - venv
+    - directories
+
+- name: Create Python virtual environment
+  command: "{{ python_executable[ansible_os_family] }} -m venv {{ venv_path }}"
+  args:
+    creates: "{{ venv_path }}/bin/activate"
+  become: yes
+  become_user: "{{ app_user }}"
+  tags:
+    - python
+    - venv
+
+- name: Set virtual environment ownership
+  file:
+    path: "{{ venv_path }}"
+    owner: "{{ venv_owner }}"
+    group: "{{ venv_group }}"
+    recurse: yes
+    state: directory
+  become: yes
+  tags:
+    - python
+    - venv
+    - permissions
+
+- name: Upgrade pip in virtual environment
+  pip:
+    name: pip
+    state: latest
+    virtualenv: "{{ venv_path }}"
+    virtualenv_command: "{{ python_executable[ansible_os_family] }} -m venv"
+  become: yes
+  become_user: "{{ app_user }}"
+  tags:
+    - python
+    - venv
+    - pip
+
+- name: Install essential packages in virtual environment
+  pip:
+    name:
+      - setuptools
+      - wheel
+    state: latest
+    virtualenv: "{{ venv_path }}"
+  become: yes
+  become_user: "{{ app_user }}"
+  tags:
+    - python
+    - venv
+    - pip
+
+- name: Create virtual environment activation script
+  template:
+    src: activate_venv.sh.j2
+    dest: "{{ app_dir }}/activate_venv.sh"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - python
+    - venv
+    - scripts
+
+- name: Verify virtual environment
+  command: "{{ venv_path }}/bin/python --version"
+  register: venv_python_version
+  changed_when: false
+  become: yes
+  become_user: "{{ app_user }}"
+  tags:
+    - python
+    - venv
+    - verification
+
+- name: Display virtual environment Python version
+  debug:
+    msg: "Virtual environment Python version: {{ venv_python_version.stdout }}"
+  tags:
+    - python
+    - venv
+    - verification

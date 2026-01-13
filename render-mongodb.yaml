@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: flight-booking-app
+    runtime: python
+    runtimeVersion: 3.11
+    buildCommand: sh build-render.sh
+    startCommand: gunicorn capstone.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120 --access-logfile - --error-logfile -
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: DJANGO_SETTINGS_MODULE
+        value: capstone.settings_render
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: DISABLE_COLLECTSTATIC
+        value: "0"
+      - key: MONGODB_URI
+        fromService:
+          type: pserv
+          name: flight-booking-mongodb
+          property: connectionString
+      - key: MONGODB_NAME
+        value: flight_booking_db
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: flight-booking-redis
+          property: connectionString
+    healthCheckPath: /health/
+    
+  - type: pserv
+    name: flight-booking-mongodb
+    runtime: docker
+    dockerfilePath: ./mongodb/Dockerfile
+    envVars:
+      - key: MONGO_INITDB_ROOT_USERNAME
+        value: admin
+      - key: MONGO_INITDB_ROOT_PASSWORD
+        generateValue: true
+      - key: MONGO_INITDB_DATABASE
+        value: flight_booking_db
+    disk:
+      name: mongodb-data
+      mountPath: /data/db
+      sizeGB: 10
+    
+  - type: redis
+    name: flight-booking-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru

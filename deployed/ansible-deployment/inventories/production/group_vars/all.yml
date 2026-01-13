@@ -1,0 +1,31 @@
+---
+# Production Environment Configuration
+debug_mode: false
+allowed_hosts:
+  - "{{ nginx_server_name }}"
+  - "flightbooking.com"
+  - "www.flightbooking.com"
+
+# Production-specific settings
+ssl_enabled: true
+nginx_server_name: flightbooking.com
+
+# Database backup schedule
+backup_schedule: "0 2 * * *"  # Daily at 2 AM
+database_backup_enabled: true
+backup_retention_days: 90
+
+# Security settings
+fail2ban_enabled: true
+automatic_updates: true
+
+# Logging
+log_level: WARNING
+django_log_level: ERROR
+
+# Performance (optimized for production)
+gunicorn_workers: 4
+gunicorn_timeout: 60
+
+# Load balancing
+load_balancer_enabled: true

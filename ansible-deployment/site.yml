@@ -1,0 +1,95 @@
+---
+# Main site playbook for Django Flight Booking Application deployment
+
+- name: Deploy Django Flight Booking Application
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  pre_tasks:
+    - name: Update package cache (Debian/Ubuntu)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      tags: always
+
+    - name: Display deployment information
+      debug:
+        msg: |
+          Starting deployment for {{ app_name }}
+          Environment: {{ environment | default('unknown') }}
+          Target hosts: {{ ansible_play_hosts | join(', ') }}
+          Deployment method: {{ deployment_method }}
+      tags: always
+
+  roles:
+    - role: common
+      tags: 
+        - common
+        - base
+    
+    - role: security
+      tags:
+        - security
+        - hardening
+      when: security_hardening_enabled | default(true)
+
+    - role: python
+      tags:
+        - python
+        - environment
+      when: deployment_method == "traditional"
+
+    - role: django-app
+      tags:
+        - django
+        - application
+      when: deployment_method == "traditional"
+
+  post_tasks:
+    - name: Verify basic system setup
+      command: "{{ item }}"
+      register: system_verification
+      changed_when: false
+      failed_when: false
+      loop:
+        - "whoami"
+        - "id {{ app_user }}"
+        - "systemctl is-active ssh"
+      tags: verification
+
+    - name: Verify Django application (if deployed)
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ app_port }}{{ health_check_url | default('/') }}"
+        method: GET
+        status_code: [200, 301, 302, 404]
+        timeout: 10
+      register: app_verification
+      ignore_errors: yes
+      when: deployment_method == "traditional"
+      tags: verification
+
+    - name: Display verification results
+      debug:
+        msg: |
+          System verification completed successfully
+          Django app status: {{ 'HEALTHY' if app_verification.status in [200, 301, 302] else 'NOT RESPONDING' }}
+      when: system_verification is defined
+      tags: verification
+
+    - name: Create deployment completion marker
+      file:
+        path: /tmp/ansible-deployment-{{ ansible_date_time.epoch }}
+        state: touch
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+      tags: always
+
+  handlers:
+    - name: restart ssh
+      systemd:
+        name: ssh
+        state: restarted
+      become: yes

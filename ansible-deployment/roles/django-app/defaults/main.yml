@@ -1,0 +1,46 @@
+---
+# Django application role default variables
+
+# Application deployment
+deploy_from_git: true
+git_repo: "{{ repo_url }}"
+git_branch: "{{ repo_branch | default('main') }}"
+git_force: false
+
+# Django configuration
+django_settings_module: "{{ app_name }}.settings"
+django_secret_key: "{{ vault_django_secret_key | default('change-me-in-production') }}"
+django_debug: "{{ debug_mode | default(false) }}"
+django_allowed_hosts: "{{ allowed_hosts | default(['localhost', '127.0.0.1']) }}"
+
+# Database configuration
+database_migrate: true
+database_collect_static: true
+database_load_fixtures: false
+
+# Static files
+static_root: "{{ app_dir }}/staticfiles"
+media_root: "{{ app_dir }}/media"
+
+# Gunicorn configuration
+gunicorn_bind: "127.0.0.1:{{ app_port }}"
+gunicorn_workers: "{{ gunicorn_workers | default(3) }}"
+gunicorn_timeout: "{{ gunicorn_timeout | default(30) }}"
+gunicorn_keepalive: "{{ gunicorn_keepalive | default(2) }}"
+gunicorn_max_requests: 1000
+gunicorn_max_requests_jitter: 100
+
+# Service configuration
+create_systemd_service: true
+service_name: "{{ app_name }}"
+service_description: "{{ app_name | title }} Django Application"
+
+# Log configuration
+log_dir: "{{ app_dir }}/logs"
+log_level: "{{ log_level | default('INFO') }}"
+
+# Environment file
+env_file: "{{ app_dir }}/.env"
+
+# Backup configuration
+backup_before_deploy: true

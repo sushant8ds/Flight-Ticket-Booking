@@ -1,0 +1,121 @@
+---
+# Django application deployment tasks
+
+- name: Create application directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  loop: "{{ app_directories }}"
+  tags:
+    - django
+    - deploy
+    - directories
+
+- name: Backup current deployment (if exists)
+  archive:
+    path: "{{ app_dir }}"
+    dest: "{{ backup_dir }}/{{ app_name }}-backup-{{ ansible_date_time.epoch }}.tar.gz"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  become: yes
+  when: 
+    - backup_before_deploy | bool
+    - ansible_stat_result.stat.exists | default(false)
+  ignore_errors: yes
+  tags:
+    - django
+    - deploy
+    - backup
+
+- name: Clone/update application from Git repository
+  git:
+    repo: "{{ git_repo }}"
+    dest: "{{ app_dir }}"
+    version: "{{ git_branch }}"
+    force: "{{ git_force }}"
+    clone: yes
+    update: yes
+  become: yes
+  become_user: "{{ app_user }}"
+  when: deploy_from_git | bool
+  notify: restart django app
+  tags:
+    - django
+    - deploy
+    - git
+
+- name: Set proper ownership for application directory
+  file:
+    path: "{{ app_dir }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    recurse: yes
+  become: yes
+  tags:
+    - django
+    - deploy
+    - permissions
+
+- name: Install/update Python requirements
+  pip:
+    requirements: "{{ app_dir }}/requirements.txt"
+    virtualenv: "{{ venv_path }}"
+    state: present
+  become: yes
+  become_user: "{{ app_user }}"
+  when: 
+    - venv_path is defined
+    - requirements_file_exists.stat.exists | default(true)
+  notify: restart django app
+  tags:
+    - django
+    - deploy
+    - requirements
+
+- name: Install default Django packages (if no requirements.txt)
+  pip:
+    name: "{{ default_django_packages }}"
+    virtualenv: "{{ venv_path }}"
+    state: present
+  become: yes
+  become_user: "{{ app_user }}"
+  when: 
+    - venv_path is defined
+    - not (requirements_file_exists.stat.exists | default(true))
+  tags:
+    - django
+    - deploy
+    - requirements
+
+- name: Check if manage.py exists
+  stat:
+    path: "{{ app_dir }}/manage.py"
+  register: manage_py_stat
+  tags:
+    - django
+    - deploy
+    - verification
+
+- name: Verify Django installation
+  command: "{{ venv_path }}/bin/python -c 'import django; print(django.get_version())'"
+  register: django_version_check
+  changed_when: false
+  become: yes
+  become_user: "{{ app_user }}"
+  tags:
+    - django
+    - deploy
+    - verification
+
+- name: Display Django version
+  debug:
+    msg: "Django version: {{ django_version_check.stdout }}"
+  when: django_version_check is defined
+  tags:
+    - django
+    - deploy
+    - verification

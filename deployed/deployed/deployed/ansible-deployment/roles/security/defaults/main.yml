@@ -1,0 +1,65 @@
+---
+# Security role default variables
+
+# SSH Configuration
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_pubkey_authentication: "yes"
+ssh_challenge_response_authentication: "no"
+ssh_gss_api_authentication: "no"
+ssh_x11_forwarding: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+ssh_protocol: 2
+
+# Firewall Configuration
+firewall_enabled: true
+firewall_default_policy_input: DROP
+firewall_default_policy_forward: DROP
+firewall_default_policy_output: ACCEPT
+
+# Allowed ports
+firewall_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+  - 80
+  - 443
+
+firewall_allowed_udp_ports: []
+
+# Fail2ban Configuration
+fail2ban_enabled: "{{ fail2ban_enabled | default(true) }}"
+fail2ban_bantime: 3600
+fail2ban_findtime: 600
+fail2ban_maxretry: 5
+fail2ban_backend: systemd
+
+# Services to monitor with fail2ban
+fail2ban_services:
+  - name: sshd
+    port: "{{ ssh_port }}"
+    protocol: tcp
+    logpath: /var/log/auth.log
+    maxretry: "{{ fail2ban_maxretry }}"
+
+# Security updates
+security_updates_enabled: "{{ automatic_updates | default(false) }}"
+
+# System hardening
+disable_unused_filesystems: true
+unused_filesystems:
+  - cramfs
+  - freevxfs
+  - jffs2
+  - hfs
+  - hfsplus
+  - squashfs
+  - udf
+
+# Network security
+network_security_enabled: true
+disable_ipv6: false
+
+# Audit logging
+audit_enabled: false

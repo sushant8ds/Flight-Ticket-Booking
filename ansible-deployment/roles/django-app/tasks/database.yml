@@ -1,0 +1,128 @@
+---
+# Django database tasks
+
+- name: Check if Django project has migrations
+  find:
+    paths: "{{ app_dir }}"
+    patterns: "*/migrations/*.py"
+    recurse: yes
+  register: migration_files
+  become: yes
+  become_user: "{{ app_user }}"
+  tags:
+    - django
+    - database
+    - migrations
+
+- name: Run Django database migrations
+  django_manage:
+    command: migrate
+    app_path: "{{ app_dir }}"
+    virtualenv: "{{ venv_path }}"
+    settings: "{{ django_settings_module }}"
+  become: yes
+  become_user: "{{ app_user }}"
+  environment:
+    DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+    SECRET_KEY: "{{ django_secret_key }}"
+    DEBUG: "{{ django_debug | lower }}"
+  when: 
+    - database_migrate | bool
+    - manage_py_stat.stat.exists | default(false)
+  tags:
+    - django
+    - database
+    - migrations
+
+- name: Create Django superuser (if specified)
+  django_manage:
+    command: "shell -c \"
+      from django.contrib.auth import get_user_model;
+      User = get_user_model();
+      if not User.objects.filter(username='{{ django_superuser_username }}').exists():
+          User.objects.create_superuser('{{ django_superuser_username }}', '{{ django_superuser_email }}', '{{ django_superuser_password }}');
+          print('Superuser created successfully');
+      else:
+          print('Superuser already exists');
+    \""
+    app_path: "{{ app_dir }}"
+    virtualenv: "{{ venv_path }}"
+    settings: "{{ django_settings_module }}"
+  become: yes
+  become_user: "{{ app_user }}"
+  environment:
+    DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+    SECRET_KEY: "{{ django_secret_key }}"
+    DEBUG: "{{ django_debug | lower }}"
+  when: 
+    - django_superuser_username is defined
+    - django_superuser_password is defined
+    - manage_py_stat.stat.exists | default(false)
+  tags:
+    - django
+    - database
+    - superuser
+
+- name: Load Django fixtures (if specified)
+  django_manage:
+    command: "loaddata {{ item }}"
+    app_path: "{{ app_dir }}"
+    virtualenv: "{{ venv_path }}"
+    settings: "{{ django_settings_module }}"
+  become: yes
+  become_user: "{{ app_user }}"
+  environment:
+    DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+    SECRET_KEY: "{{ django_secret_key }}"
+    DEBUG: "{{ django_debug | lower }}"
+  loop: "{{ django_fixtures | default([]) }}"
+  when: 
+    - database_load_fixtures | bool
+    - django_fixtures is defined
+    - manage_py_stat.stat.exists | default(false)
+  tags:
+    - django
+    - database
+    - fixtures
+
+- name: Load initial data from CSV files
+  script: load_csv_data.py
+  args:
+    executable: "{{ venv_path }}/bin/python"
+  become: yes
+  become_user: "{{ app_user }}"
+  environment:
+    DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+    SECRET_KEY: "{{ django_secret_key }}"
+    DEBUG: "{{ django_debug | lower }}"
+    PYTHONPATH: "{{ app_dir }}"
+  when: 
+    - load_csv_data | default(false)
+    - manage_py_stat.stat.exists | default(false)
+  tags:
+    - django
+    - database
+    - csv-data
+
+- name: Verify database connectivity
+  django_manage:
+    command: "shell -c \"
+      from django.db import connection;
+      cursor = connection.cursor();
+      cursor.execute('SELECT 1');
+      print('Database connection successful');
+    \""
+    app_path: "{{ app_dir }}"
+    virtualenv: "{{ venv_path }}"
+    settings: "{{ django_settings_module }}"
+  become: yes
+  become_user: "{{ app_user }}"
+  environment:
+    DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+    SECRET_KEY: "{{ django_secret_key }}"
+    DEBUG: "{{ django_debug | lower }}"
+  when: manage_py_stat.stat.exists | default(false)
+  tags:
+    - django
+    - database
+    - verification

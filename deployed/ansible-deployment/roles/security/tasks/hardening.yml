@@ -1,0 +1,31 @@
+---
+# System hardening tasks
+
+- name: Disable unused filesystems
+  lineinfile:
+    path: /etc/modprobe.d/blacklist-rare-filesystems.conf
+    line: "install {{ item }} /bin/true"
+    create: yes
+  become: yes
+  loop: "{{ unused_filesystems }}"
+  when: disable_unused_filesystems | bool
+  tags:
+    - hardening
+    - filesystems
+
+- name: Set proper permissions on critical files
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  become: yes
+  loop:
+    - { path: '/etc/passwd', owner: 'root', group: 'root', mode: '0644' }
+    - { path: '/etc/group', owner: 'root', group: 'root', mode: '0644' }
+    - { path: '/etc/shadow', owner: 'root', group: 'shadow', mode: '0640' }
+    - { path: '/etc/gshadow', owner: 'root', group: 'shadow', mode: '0640' }
+  ignore_errors: yes
+  tags:
+    - hardening
+    - permissions

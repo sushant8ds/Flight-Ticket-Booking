@@ -1,0 +1,14 @@
+---
+# Python role handlers
+
+- name: reload bashrc
+  shell: source {{ app_user_home }}/.bashrc
+  become: yes
+  become_user: "{{ app_user }}"
+
+- name: restart application
+  systemd:
+    name: "{{ app_name }}"
+    state: restarted
+  become: yes
+  ignore_errors: yes

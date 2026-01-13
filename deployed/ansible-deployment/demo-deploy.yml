@@ -1,0 +1,75 @@
+---
+- name: Demo Django Flight Booking Application Deployment
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    app_name: flight_booking
+    app_user: sushant
+    app_dir: /Users/sushant/Flight-Ticket-Booking/deployed
+    venv_dir: /Users/sushant/Flight-Ticket-Booking/deployed/venv
+    source_dir: /Users/sushant/Flight-Ticket-Booking
+    
+  tasks:
+    - name: Display deployment information
+      debug:
+        msg: |
+          🚀 Starting Ansible deployment for Django Flight Booking App
+          Target: {{ inventory_hostname }}
+          App Directory: {{ app_dir }}
+          User: {{ app_user }}
+          
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        mode: '0755'
+        
+    - name: Copy application files
+      synchronize:
+        src: "{{ source_dir }}/"
+        dest: "{{ app_dir }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=venv"
+          - "--exclude=__pycache__"
+          - "--exclude=*.pyc"
+          - "--exclude=.git"
+          
+    - name: Create virtual environment
+      command: python3 -m venv {{ venv_dir }}
+      args:
+        creates: "{{ venv_dir }}/bin/activate"
+        
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        virtualenv: "{{ venv_dir }}"
+        
+    - name: Run Django migrations
+      command: python manage.py migrate --noinput
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        PATH: "{{ venv_dir }}/bin:{{ ansible_env.PATH }}"
+        
+    - name: Collect static files
+      command: python manage.py collectstatic --noinput
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        PATH: "{{ venv_dir }}/bin:{{ ansible_env.PATH }}"
+        
+    - name: Create deployment script
+      template:
+        src: start_app.sh.j2
+        dest: "{{ app_dir }}/start_app.sh"
+        mode: '0755'
+        
+    - name: Display success message
+      debug:
+        msg: |
+          ✅ Django Flight Booking App deployed successfully!
+          📁 Location: {{ app_dir }}
+          🚀 Start with: {{ app_dir }}/start_app.sh
+          🌐 URL: http://localhost:8000

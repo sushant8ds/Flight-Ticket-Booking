@@ -1,0 +1,15 @@
+# Logrotate configuration for {{ app_name }}
+{{ app_dir }}/logs/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 0644 {{ app_user }} {{ app_group }}
+    postrotate
+        if [ -f /var/run/{{ app_name }}.pid ]; then
+            kill -USR1 `cat /var/run/{{ app_name }}.pid`
+        fi
+    endscript
+}

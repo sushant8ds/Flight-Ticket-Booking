@@ -1,0 +1,29 @@
+---
+# Security role variables
+
+# OS-specific package names
+security_packages:
+  Debian:
+    - ufw
+    - fail2ban
+    - unattended-upgrades
+    - apt-listchanges
+    - needrestart
+    - rkhunter
+    - chkrootkit
+  RedHat:
+    - firewalld
+    - fail2ban
+    - yum-cron
+    - rkhunter
+    - chkrootkit
+
+# SSH service names by OS
+ssh_service_name:
+  Debian: ssh
+  RedHat: sshd
+
+# Firewall service names by OS
+firewall_service_name:
+  Debian: ufw
+  RedHat: firewalld

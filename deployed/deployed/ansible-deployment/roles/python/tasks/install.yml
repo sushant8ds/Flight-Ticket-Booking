@@ -1,0 +1,87 @@
+---
+# Python installation tasks
+
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  become: yes
+  tags:
+    - python
+    - packages
+
+- name: Install Python and development packages (Debian/Ubuntu)
+  apt:
+    name: "{{ python_packages_by_os[ansible_os_family] + python_dev_packages }}"
+    state: present
+    install_recommends: no
+  when: ansible_os_family == "Debian"
+  become: yes
+  tags:
+    - python
+    - packages
+
+- name: Install Python packages (RedHat/CentOS)
+  yum:
+    name: "{{ python_packages_by_os[ansible_os_family] }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+  become: yes
+  tags:
+    - python
+    - packages
+
+- name: Upgrade pip to latest version
+  pip:
+    name: pip
+    state: latest
+    executable: "{{ pip_executable[ansible_os_family] }}"
+  become: yes
+  when: pip_upgrade | bool
+  tags:
+    - python
+    - pip
+
+- name: Install essential Python packages
+  pip:
+    name:
+      - setuptools
+      - wheel
+      - virtualenv
+    state: latest
+    executable: "{{ pip_executable[ansible_os_family] }}"
+  become: yes
+  tags:
+    - python
+    - pip
+
+- name: Verify Python installation
+  command: "{{ python_executable[ansible_os_family] }} --version"
+  register: python_version_check
+  changed_when: false
+  tags:
+    - python
+    - verification
+
+- name: Display Python version
+  debug:
+    msg: "Python version: {{ python_version_check.stdout }}"
+  tags:
+    - python
+    - verification
+
+- name: Verify pip installation
+  command: "{{ pip_executable[ansible_os_family] }} --version"
+  register: pip_version_check
+  changed_when: false
+  tags:
+    - python
+    - verification
+
+- name: Display pip version
+  debug:
+    msg: "Pip version: {{ pip_version_check.stdout }}"
+  tags:
+    - python
+    - verification

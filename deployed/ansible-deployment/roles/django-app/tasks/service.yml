@@ -1,0 +1,95 @@
+---
+# Django service configuration tasks
+
+- name: Create Gunicorn systemd service file
+  template:
+    src: django-app.service.j2
+    dest: "{{ systemd_service_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify:
+    - reload systemd
+    - restart django app
+  tags:
+    - django
+    - service
+    - systemd
+
+- name: Create Gunicorn socket file (if using socket activation)
+  template:
+    src: django-app.socket.j2
+    dest: "/etc/systemd/system/{{ service_name }}.socket"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when: use_socket_activation | default(false)
+  notify:
+    - reload systemd
+    - restart django app
+  tags:
+    - django
+    - service
+    - systemd
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+  tags:
+    - django
+    - service
+    - systemd
+
+- name: Enable and start Django application service
+  systemd:
+    name: "{{ service_name }}"
+    enabled: yes
+    state: started
+  become: yes
+  tags:
+    - django
+    - service
+    - systemd
+
+- name: Verify Django service status
+  systemd:
+    name: "{{ service_name }}"
+  register: django_service_status
+  become: yes
+  tags:
+    - django
+    - service
+    - verification
+
+- name: Display service status
+  debug:
+    msg: "Django service {{ service_name }} is {{ django_service_status.status.ActiveState }}"
+  tags:
+    - django
+    - service
+    - verification
+
+- name: Check if Django application is responding
+  uri:
+    url: "http://{{ gunicorn_bind.split(':')[0] }}:{{ gunicorn_bind.split(':')[1] }}{{ health_check_url | default('/') }}"
+    method: GET
+    status_code: [200, 301, 302, 404]  # Allow various response codes
+    timeout: 10
+  register: app_health_check
+  ignore_errors: yes
+  delegate_to: localhost
+  tags:
+    - django
+    - service
+    - health-check
+
+- name: Display application health status
+  debug:
+    msg: "Application health check: {{ 'PASS' if app_health_check.status in [200, 301, 302] else 'FAIL' }} (Status: {{ app_health_check.status | default('No response') }})"
+  tags:
+    - django
+    - service
+    - health-check

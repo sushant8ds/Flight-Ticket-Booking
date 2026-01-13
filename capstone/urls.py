@@ -19,9 +19,25 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.views.generic.base import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from flight.urls_health import health_check, readiness_check
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Health check endpoints for Render deployment (before flight URLs)
+    path('health/', health_check, name='health_check'),
+    path('ready/', readiness_check, name='readiness_check'),
     path('',include("flight.urls")),
-    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('img/favicon.ico')))
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+]
+
+# Add static files serving
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # For production, add favicon redirect if the file exists
+    try:
+        favicon_url = staticfiles_storage.url('img/favicon.ico')
+        urlpatterns.append(path('favicon.ico', RedirectView.as_view(url=favicon_url)))
+    except:
+        # If favicon doesn't exist, just ignore it
+        pass

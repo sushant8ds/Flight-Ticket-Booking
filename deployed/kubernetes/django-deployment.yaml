@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app
+  namespace: flight-booking
+  labels:
+    app: django-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: django-app
+  template:
+    metadata:
+      labels:
+        app: django-app
+    spec:
+      containers:
+      - name: django-app
+        image: flight-booking:mongodb-latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DJANGO_SETTINGS_MODULE
+          value: "capstone.settings_mongodb_simple"
+        - name: MONGODB_URI
+          value: "mongodb://mongodb-service:27017"
+        - name: MONGODB_NAME
+          value: "flight_booking_db"
+        - name: DEBUG
+          value: "False"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /mongodb/stats
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /mongodb/stats
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      initContainers:
+      - name: migrate
+        image: flight-booking:mongodb-latest
+        command: ['python', 'manage.py', 'migrate', '--settings=capstone.settings_mongodb_simple']
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://mongodb-service:27017"
+        - name: MONGODB_NAME
+          value: "flight_booking_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-service
+  namespace: flight-booking
+spec:
+  selector:
+    app: django-app
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP

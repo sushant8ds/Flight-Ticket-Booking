@@ -1,0 +1,33 @@
+---
+# Django application role main tasks
+
+- name: Include deployment tasks
+  include_tasks: deploy.yml
+  tags:
+    - django
+    - deploy
+
+- name: Include Django configuration tasks
+  include_tasks: configure.yml
+  tags:
+    - django
+    - configure
+
+- name: Include database tasks
+  include_tasks: database.yml
+  tags:
+    - django
+    - database
+
+- name: Include static files tasks
+  include_tasks: static.yml
+  tags:
+    - django
+    - static
+
+- name: Include Gunicorn service tasks
+  include_tasks: service.yml
+  when: create_systemd_service | bool
+  tags:
+    - django
+    - service

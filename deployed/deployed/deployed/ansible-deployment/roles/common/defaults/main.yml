@@ -1,0 +1,51 @@
+---
+# Common role default variables
+
+# System packages to install
+common_packages:
+  - git
+  - curl
+  - wget
+  - unzip
+  - vim
+  - htop
+  - tree
+  - rsync
+  - build-essential
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# System configuration
+timezone: "UTC"
+locale: "en_US.UTF-8"
+
+# User configuration
+create_app_user: true
+app_user_shell: "/bin/bash"
+app_user_home: "/home/{{ app_user }}"
+app_user_groups:
+  - "{{ app_group }}"
+
+# System limits
+system_limits:
+  - domain: "{{ app_user }}"
+    type: soft
+    item: nofile
+    value: 65536
+  - domain: "{{ app_user }}"
+    type: hard
+    item: nofile
+    value: 65536
+
+# Environment variables
+system_environment:
+  PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  LANG: "{{ locale }}"
+  LC_ALL: "{{ locale }}"
+
+# Package update settings
+update_package_cache: true
+upgrade_packages: false

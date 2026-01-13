@@ -1,0 +1,20 @@
+---
+# Common role variables
+
+# OS-specific package mappings
+package_mappings:
+  Debian:
+    build_essential: build-essential
+    python_dev: python3-dev
+  RedHat:
+    build_essential: "@Development Tools"
+    python_dev: python3-devel
+
+# Service management
+services_to_enable:
+  - ssh
+  - systemd-timesyncd
+
+services_to_disable:
+  - apache2
+  - nginx  # Will be managed by nginx role

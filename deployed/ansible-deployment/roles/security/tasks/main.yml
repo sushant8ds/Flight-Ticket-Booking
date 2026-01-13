@@ -1,0 +1,48 @@
+---
+# Security role main tasks
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: true
+
+- name: Install security packages
+  package:
+    name: "{{ security_packages[ansible_os_family] }}"
+    state: present
+  become: yes
+  tags:
+    - security
+    - packages
+
+- name: Include SSH hardening tasks
+  include_tasks: ssh.yml
+  tags:
+    - security
+    - ssh
+
+- name: Include firewall configuration tasks
+  include_tasks: firewall.yml
+  when: firewall_enabled | bool
+  tags:
+    - security
+    - firewall
+
+- name: Include fail2ban configuration tasks
+  include_tasks: fail2ban.yml
+  when: fail2ban_enabled | bool
+  tags:
+    - security
+    - fail2ban
+
+- name: Include system hardening tasks
+  include_tasks: hardening.yml
+  tags:
+    - security
+    - hardening
+
+- name: Include security updates configuration
+  include_tasks: updates.yml
+  when: security_updates_enabled | bool
+  tags:
+    - security
+    - updates

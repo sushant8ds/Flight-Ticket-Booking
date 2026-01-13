@@ -1,0 +1,31 @@
+---
+# Python role main tasks
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: true
+
+- name: Include Python installation tasks
+  include_tasks: install.yml
+  tags:
+    - python
+    - install
+
+- name: Include virtual environment setup tasks
+  include_tasks: venv.yml
+  when: create_venv | bool
+  tags:
+    - python
+    - venv
+
+- name: Include requirements installation tasks
+  include_tasks: requirements.yml
+  tags:
+    - python
+    - requirements
+
+- name: Include Python environment configuration
+  include_tasks: environment.yml
+  tags:
+    - python
+    - environment

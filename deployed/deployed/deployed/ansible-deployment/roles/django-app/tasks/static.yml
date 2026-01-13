@@ -1,0 +1,91 @@
+---
+# Django static files tasks
+
+- name: Create static files directory
+  file:
+    path: "{{ static_root }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - django
+    - static
+    - directories
+
+- name: Create media files directory
+  file:
+    path: "{{ media_root }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - django
+    - static
+    - directories
+
+- name: Collect Django static files
+  django_manage:
+    command: collectstatic
+    app_path: "{{ app_dir }}"
+    virtualenv: "{{ venv_path }}"
+    settings: "{{ django_settings_module }}"
+  become: yes
+  become_user: "{{ app_user }}"
+  environment:
+    DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+    SECRET_KEY: "{{ django_secret_key }}"
+    DEBUG: "{{ django_debug | lower }}"
+  when: 
+    - database_collect_static | bool
+    - manage_py_stat.stat.exists | default(false)
+  tags:
+    - django
+    - static
+    - collectstatic
+
+- name: Set proper permissions on static files
+  file:
+    path: "{{ static_root }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+    recurse: yes
+  become: yes
+  tags:
+    - django
+    - static
+    - permissions
+
+- name: Set proper permissions on media files
+  file:
+    path: "{{ media_root }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+    recurse: yes
+  become: yes
+  tags:
+    - django
+    - static
+    - permissions
+
+- name: Verify static files collection
+  stat:
+    path: "{{ static_root }}/admin"
+  register: admin_static_check
+  tags:
+    - django
+    - static
+    - verification
+
+- name: Display static files status
+  debug:
+    msg: "Static files collected successfully. Admin static files found: {{ admin_static_check.stat.exists }}"
+  tags:
+    - django
+    - static
+    - verification

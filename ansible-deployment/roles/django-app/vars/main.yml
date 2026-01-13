@@ -1,0 +1,25 @@
+---
+# Django application role variables
+
+# Django management commands
+django_manage_py: "{{ venv_path }}/bin/python {{ app_dir }}/manage.py"
+
+# Required directories
+app_directories:
+  - "{{ app_dir }}"
+  - "{{ static_root }}"
+  - "{{ media_root }}"
+  - "{{ log_dir }}"
+  - "{{ app_dir }}/tmp"
+
+# Service files
+systemd_service_file: "/etc/systemd/system/{{ service_name }}.service"
+gunicorn_config_file: "{{ app_dir }}/gunicorn.conf.py"
+
+# Default Django packages (if requirements.txt not found)
+default_django_packages:
+  - Django==5.0.1
+  - gunicorn==21.2.0
+  - python-decouple==3.8
+  - whitenoise==6.6.0
+  - psycopg2-binary  # For PostgreSQL support if needed

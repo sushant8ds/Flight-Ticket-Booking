@@ -1,0 +1,237 @@
+---
+# Firewall configuration tasks
+
+- name: Install UFW (Debian/Ubuntu)
+  apt:
+    name: ufw
+    state: present
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - packages
+
+- name: Reset UFW to defaults
+  ufw:
+    state: reset
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - configuration
+
+- name: Configure UFW default policies
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  become: yes
+  loop:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+    - { direction: 'routed', policy: 'deny' }
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - configuration
+
+- name: Allow SSH access
+  ufw:
+    rule: allow
+    port: "{{ ssh_port }}"
+    proto: tcp
+    comment: "SSH access"
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - ssh
+
+- name: Allow specified TCP ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    comment: "Allowed TCP port {{ item }}"
+  become: yes
+  loop: "{{ firewall_allowed_tcp_ports }}"
+  when: 
+    - ansible_os_family == "Debian"
+    - firewall_allowed_tcp_ports is defined
+  tags:
+    - firewall
+    - tcp
+
+- name: Allow specified UDP ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: udp
+    comment: "Allowed UDP port {{ item }}"
+  become: yes
+  loop: "{{ firewall_allowed_udp_ports }}"
+  when: 
+    - ansible_os_family == "Debian"
+    - firewall_allowed_udp_ports is defined
+  tags:
+    - firewall
+    - udp
+
+- name: Allow loopback traffic
+  ufw:
+    rule: allow
+    interface: lo
+    direction: in
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - loopback
+
+- name: Allow loopback traffic (out)
+  ufw:
+    rule: allow
+    interface: lo
+    direction: out
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - loopback
+
+- name: Deny access to loopback from network
+  ufw:
+    rule: deny
+    src: 127.0.0.0/8
+    comment: "Deny loopback network traffic"
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - security
+
+- name: Allow established and related connections
+  ufw:
+    rule: allow
+    direction: in
+    proto: any
+    from_ip: any
+    to_ip: any
+    comment: "Allow established connections"
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - established
+
+- name: Configure rate limiting for SSH
+  ufw:
+    rule: limit
+    port: "{{ ssh_port }}"
+    proto: tcp
+    comment: "Rate limit SSH connections"
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - rate-limiting
+
+- name: Enable UFW logging
+  ufw:
+    logging: "{{ ufw_logging_level | default('low') }}"
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - logging
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - enable
+
+- name: Ensure UFW service is enabled and started
+  systemd:
+    name: ufw
+    enabled: yes
+    state: started
+  become: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - service
+
+# RedHat/CentOS firewall configuration
+- name: Install firewalld (RedHat/CentOS)
+  yum:
+    name: firewalld
+    state: present
+  become: yes
+  when: ansible_os_family == "RedHat"
+  tags:
+    - firewall
+    - packages
+
+- name: Start and enable firewalld (RedHat/CentOS)
+  systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+  become: yes
+  when: ansible_os_family == "RedHat"
+  tags:
+    - firewall
+    - service
+
+- name: Configure firewalld allowed TCP ports (RedHat/CentOS)
+  firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  become: yes
+  loop: "{{ firewall_allowed_tcp_ports }}"
+  when: 
+    - ansible_os_family == "RedHat"
+    - firewall_allowed_tcp_ports is defined
+  tags:
+    - firewall
+    - tcp
+
+- name: Configure firewalld allowed UDP ports (RedHat/CentOS)
+  firewalld:
+    port: "{{ item }}/udp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  become: yes
+  loop: "{{ firewall_allowed_udp_ports }}"
+  when: 
+    - ansible_os_family == "RedHat"
+    - firewall_allowed_udp_ports is defined
+  tags:
+    - firewall
+    - udp
+
+- name: Verify firewall status
+  command: "{{ firewall_status_command[ansible_os_family] }}"
+  register: firewall_status
+  changed_when: false
+  become: yes
+  vars:
+    firewall_status_command:
+      Debian: "ufw status verbose"
+      RedHat: "firewall-cmd --list-all"
+  tags:
+    - firewall
+    - verification
+
+- name: Display firewall status
+  debug:
+    var: firewall_status.stdout_lines
+  tags:
+    - firewall
+    - verification

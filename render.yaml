@@ -3,10 +3,40 @@ services:
     name: flight-ticket-booking
     runtime: python
     runtimeVersion: 3.11
-    buildCommand: sh build.sh
-    startCommand: gunicorn capstone.wsgi:application
+    buildCommand: sh build-render.sh
+    startCommand: gunicorn capstone.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120
     envVars:
       - key: DEBUG
         value: "False"
       - key: PYTHON_VERSION
         value: 3.11.4
+      - key: DJANGO_SETTINGS_MODULE
+        value: capstone.settings_render
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: DISABLE_COLLECTSTATIC
+        value: "0"
+    healthCheckPath: /health/
+    
+  - type: pserv
+    name: flight-booking-mongodb
+    runtime: docker
+    dockerfilePath: ./Dockerfile.mongodb
+    envVars:
+      - key: MONGO_INITDB_ROOT_USERNAME
+        value: admin
+      - key: MONGO_INITDB_ROOT_PASSWORD
+        generateValue: true
+      - key: MONGO_INITDB_DATABASE
+        value: flight_booking_db
+    disk:
+      name: mongodb-data
+      mountPath: /data/db
+      sizeGB: 10
+    
+  - type: redis
+    name: flight-booking-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru

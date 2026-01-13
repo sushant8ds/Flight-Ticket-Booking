@@ -1,0 +1,87 @@
+---
+# Django configuration tasks
+
+- name: Create Django environment file
+  template:
+    src: django_env.j2
+    dest: "{{ env_file }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0640'
+  become: yes
+  notify: restart django app
+  tags:
+    - django
+    - configure
+    - environment
+
+- name: Create Django settings override (if needed)
+  template:
+    src: local_settings.py.j2
+    dest: "{{ app_dir }}/{{ app_name }}/local_settings.py"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  become: yes
+  when: create_local_settings | default(false)
+  notify: restart django app
+  tags:
+    - django
+    - configure
+    - settings
+
+- name: Create Gunicorn configuration
+  template:
+    src: gunicorn.conf.py.j2
+    dest: "{{ gunicorn_config_file }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  become: yes
+  notify: restart django app
+  tags:
+    - django
+    - configure
+    - gunicorn
+
+- name: Create log directory
+  file:
+    path: "{{ log_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - django
+    - configure
+    - logging
+
+- name: Configure Django logging
+  template:
+    src: logging.conf.j2
+    dest: "{{ app_dir }}/logging.conf"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  become: yes
+  tags:
+    - django
+    - configure
+    - logging
+
+- name: Set Django environment variables in bashrc
+  lineinfile:
+    path: "{{ app_user_home }}/.bashrc"
+    regexp: '^export {{ item.key }}='
+    line: 'export {{ item.key }}="{{ item.value }}"'
+    create: yes
+  become: yes
+  loop:
+    - { key: 'DJANGO_SETTINGS_MODULE', value: '{{ django_settings_module }}' }
+    - { key: 'DJANGO_SECRET_KEY', value: '{{ django_secret_key }}' }
+    - { key: 'DJANGO_DEBUG', value: '{{ django_debug | lower }}' }
+  tags:
+    - django
+    - configure
+    - environment

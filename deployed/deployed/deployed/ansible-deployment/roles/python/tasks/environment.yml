@@ -1,0 +1,69 @@
+---
+# Python environment configuration tasks
+
+- name: Create Python environment configuration file
+  template:
+    src: python_env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0640'
+  become: yes
+  tags:
+    - python
+    - environment
+
+- name: Configure Python environment variables in profile
+  lineinfile:
+    path: "{{ app_user_home }}/.bashrc"
+    regexp: '^export {{ item.key }}='
+    line: 'export {{ item.key }}="{{ item.value }}"'
+    create: yes
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  become: yes
+  loop: "{{ python_environment | dict2items }}"
+  when: python_environment is defined
+  tags:
+    - python
+    - environment
+
+- name: Add virtual environment activation to bashrc
+  lineinfile:
+    path: "{{ app_user_home }}/.bashrc"
+    line: "source {{ venv_path }}/bin/activate"
+    create: yes
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  become: yes
+  when: create_venv | bool
+  tags:
+    - python
+    - environment
+    - venv
+
+- name: Create pip configuration directory
+  file:
+    path: "{{ app_user_home }}/.pip"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - python
+    - pip
+    - configuration
+
+- name: Configure pip settings
+  template:
+    src: pip.conf.j2
+    dest: "{{ app_user_home }}/.pip/pip.conf"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  become: yes
+  tags:
+    - python
+    - pip
+    - configuration

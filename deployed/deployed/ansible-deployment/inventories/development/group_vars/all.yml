@@ -1,0 +1,26 @@
+---
+# Development Environment Configuration
+debug_mode: true
+allowed_hosts:
+  - "{{ nginx_server_name }}"
+  - "localhost"
+  - "127.0.0.1"
+  - "dev.flightbooking.local"
+
+# Development-specific settings
+ssl_enabled: false
+nginx_server_name: dev.flightbooking.local
+
+# Database settings
+database_backup_enabled: false
+
+# Security settings (relaxed for development)
+fail2ban_enabled: false
+automatic_updates: false
+
+# Logging
+log_level: DEBUG
+django_log_level: DEBUG
+
+# Performance (lower for development)
+gunicorn_workers: 2

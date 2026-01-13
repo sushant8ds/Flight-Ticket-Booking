@@ -1,0 +1,79 @@
+---
+# Requirements installation tasks
+
+- name: Check if requirements file exists
+  stat:
+    path: "{{ requirements_file }}"
+  register: requirements_stat
+  tags:
+    - python
+    - requirements
+
+- name: Install requirements from file
+  pip:
+    requirements: "{{ requirements_file }}"
+    virtualenv: "{{ venv_path }}"
+    state: present
+  become: yes
+  become_user: "{{ app_user }}"
+  when: 
+    - requirements_stat.stat.exists
+    - create_venv | bool
+  tags:
+    - python
+    - requirements
+
+- name: Install requirements globally (if no venv)
+  pip:
+    requirements: "{{ requirements_file }}"
+    executable: "{{ pip_executable[ansible_os_family] }}"
+    state: present
+  become: yes
+  when: 
+    - requirements_stat.stat.exists
+    - not (create_venv | bool)
+  tags:
+    - python
+    - requirements
+
+- name: Install default Django packages if no requirements file
+  pip:
+    name:
+      - Django==5.0.1
+      - gunicorn==21.2.0
+      - python-decouple==3.8
+      - whitenoise==6.6.0
+    virtualenv: "{{ venv_path }}"
+    state: present
+  become: yes
+  become_user: "{{ app_user }}"
+  when: 
+    - not requirements_stat.stat.exists
+    - create_venv | bool
+  tags:
+    - python
+    - requirements
+    - django
+
+- name: List installed packages in virtual environment
+  command: "{{ venv_path }}/bin/pip list"
+  register: venv_packages
+  changed_when: false
+  become: yes
+  become_user: "{{ app_user }}"
+  when: create_venv | bool
+  tags:
+    - python
+    - requirements
+    - verification
+
+- name: Display installed packages
+  debug:
+    var: venv_packages.stdout_lines
+  when: 
+    - create_venv | bool
+    - venv_packages is defined
+  tags:
+    - python
+    - requirements
+    - verification

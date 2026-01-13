@@ -1,0 +1,25 @@
+---
+# Staging Environment Configuration
+debug_mode: false
+allowed_hosts:
+  - "{{ nginx_server_name }}"
+  - "staging.flightbooking.com"
+
+# Staging-specific settings
+ssl_enabled: true
+nginx_server_name: staging.flightbooking.com
+
+# Database backup schedule
+backup_schedule: "0 3 * * *"  # Daily at 3 AM
+database_backup_enabled: true
+
+# Security settings
+fail2ban_enabled: true
+automatic_updates: true
+
+# Logging
+log_level: INFO
+django_log_level: INFO
+
+# Performance
+gunicorn_workers: 3

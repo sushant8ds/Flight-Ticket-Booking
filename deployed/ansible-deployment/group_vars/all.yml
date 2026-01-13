@@ -1,0 +1,54 @@
+---
+# Application Configuration
+app_name: flight_booking
+app_user: sushant
+app_group: staff
+app_port: 8000
+
+# Repository Configuration
+repo_url: /Users/sushant/Flight-Ticket-Booking
+repo_branch: main
+app_dir: /Users/sushant/Flight-Ticket-Booking/deployed
+
+# Python Configuration
+python_version: "3.11"
+venv_dir: "{{ app_dir }}/venv"
+python_packages:
+  - pip
+  - setuptools
+  - wheel
+  - virtualenv
+
+# Database Configuration
+database_name: "{{ app_name }}"
+database_path: "{{ app_dir }}/db.sqlite3"
+
+# Nginx Configuration
+nginx_server_name: "{{ ansible_default_ipv4.address }}"
+nginx_client_max_body_size: 50M
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+
+# SSL Configuration
+ssl_enabled: false
+ssl_cert_email: admin@example.com
+certbot_auto_renew: true
+
+# Backup Configuration
+backup_dir: /opt/backups
+backup_retention_days: 30
+
+# Security Configuration
+fail2ban_enabled: true
+automatic_updates: false
+
+# Service Configuration
+gunicorn_workers: 3
+gunicorn_timeout: 30
+gunicorn_keepalive: 2
+
+# Deployment Configuration
+deployment_method: traditional  # traditional or docker
+rolling_deployment: true
+health_check_url: "/health/"
+health_check_timeout: 30

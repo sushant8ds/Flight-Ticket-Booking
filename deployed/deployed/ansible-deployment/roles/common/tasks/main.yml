@@ -1,0 +1,118 @@
+---
+# Common role main tasks
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: true
+
+- name: Update package cache (Debian/Ubuntu)
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: 
+    - ansible_os_family == "Debian"
+    - update_package_cache | bool
+
+- name: Upgrade all packages (if enabled)
+  apt:
+    upgrade: dist
+  when:
+    - ansible_os_family == "Debian"
+    - upgrade_packages | bool
+
+- name: Install common system packages
+  package:
+    name: "{{ common_packages }}"
+    state: present
+  become: yes
+
+- name: Include package installation tasks
+  include_tasks: packages.yml
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+  become: yes
+  notify: restart systemd-timesyncd
+
+- name: Generate locale
+  locale_gen:
+    name: "{{ locale }}"
+    state: present
+  become: yes
+  when: ansible_os_family == "Debian"
+
+- name: Set system locale
+  lineinfile:
+    path: /etc/default/locale
+    regexp: '^{{ item.key }}='
+    line: '{{ item.key }}={{ item.value }}'
+    create: yes
+  become: yes
+  loop:
+    - { key: 'LANG', value: '{{ locale }}' }
+    - { key: 'LC_ALL', value: '{{ locale }}' }
+  when: ansible_os_family == "Debian"
+
+- name: Create application group
+  group:
+    name: "{{ app_group }}"
+    state: present
+  become: yes
+  when: create_app_user | bool
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    groups: "{{ app_user_groups }}"
+    shell: "{{ app_user_shell }}"
+    home: "{{ app_user_home }}"
+    create_home: yes
+    state: present
+  become: yes
+  when: create_app_user | bool
+
+- name: Include user management tasks
+  include_tasks: users.yml
+
+- name: Include system configuration tasks
+  include_tasks: system.yml
+
+- name: Set system limits
+  pam_limits:
+    domain: "{{ item.domain }}"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  become: yes
+  loop: "{{ system_limits }}"
+  when: system_limits is defined
+
+- name: Configure system environment variables
+  lineinfile:
+    path: /etc/environment
+    regexp: '^{{ item.key }}='
+    line: '{{ item.key }}={{ item.value }}'
+    create: yes
+  become: yes
+  loop: "{{ system_environment | dict2items }}"
+  when: system_environment is defined
+
+- name: Enable required services
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  become: yes
+  loop: "{{ services_to_enable }}"
+  ignore_errors: yes
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  become: yes
+  loop: "{{ services_to_disable }}"
+  ignore_errors: yes
