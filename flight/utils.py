@@ -1,7 +1,14 @@
 from datetime import timedelta, datetime
 from flight.models import *
 from .models import Week, Place, Flight
-from tqdm import tqdm
+
+# Optional tqdm import for progress bars
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback if tqdm is not available
+    def tqdm(iterable, total=None):
+        return iterable
 
 def get_number_of_lines(file):
     with open(file) as f:
